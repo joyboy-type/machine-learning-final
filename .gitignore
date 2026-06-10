@@ -1,0 +1,29 @@
+# Dataset files (too large, provide separately)
+data/*.csv
+DryBeanDataset/
+
+# Generated output
+output/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Virtual env
+venv/
+.venv/
