@@ -29,7 +29,8 @@ from evaluate import (
     evaluate_model, evaluate_robustness,
     plot_confusion_matrix, plot_metrics_comparison,
     plot_robustness_curves, plot_loss_curves,
-    plot_overfitting_analysis, save_all_results,
+    plot_overfitting_analysis, plot_per_class_metrics,
+    save_all_results,
 )
 
 
@@ -61,20 +62,23 @@ def run_training(X_train, y_train, X_val, y_val, X_test, y_test, algorithms):
 
     all_results = {}
     all_robustness = {}
+    all_robustness_sp = {}
     train_accs = {}
     test_accs = {}
+    train_times = {}
     histories = {}
 
     for algo in algorithms:
-        print(f"\n{'─' * 50}")
+        print(f"\n{'=' * 50}")
         print(f"  Training: {algo.upper()}")
-        print(f"{'─' * 50}")
+        print(f"{'=' * 50}")
 
         model, history, train_time, train_acc = train_model(
             algo, X_train, y_train, X_val, y_val
         )
         print(f"  Training time: {train_time:.2f}s")
         print(f"  Training accuracy: {train_acc:.4f}")
+        train_times[algo] = train_time
 
         print(f"  Evaluating on test set...")
         metrics = evaluate_model(model, X_test, y_test, algo, class_names)
@@ -83,46 +87,70 @@ def run_training(X_train, y_train, X_val, y_val, X_test, y_test, algorithms):
         test_accs[algo] = metrics["accuracy"]
         histories[algo] = history
 
-        print(f"  Test accuracy:   {metrics['accuracy']:.4f}")
-        print(f"  Test F1 (macro):  {metrics['f1_macro']:.4f}")
+        print(f"  Test accuracy:    {metrics['accuracy']:.4f}")
+        print(f"  Test F1 (macro):   {metrics['f1_macro']:.4f}")
         print(f"  Test F1 (weighted): {metrics['f1_weighted']:.4f}")
-        print(f"  Inference time:  {metrics['inference_time_ms']:.4f} ms/sample")
+        print(f"  Inference time:    {metrics['inference_time_ms']:.4f} ms/sample")
 
-        # Robustness evaluation
-        print(f"  Evaluating robustness...")
-        rob = evaluate_robustness(model, X_test, y_test, algo, "gaussian")
-        all_robustness[algo] = rob
-        for level, acc in rob.items():
-            print(f"    Noise level {level:.2f}: accuracy = {acc:.4f}")
+        # Per-class summary
+        per_class = metrics.get("per_class", {})
+        if per_class:
+            print(f"  Per-class F1:")
+            for cls_name, cls_metrics in per_class.items():
+                print(f"    {cls_name:<12}: precision={cls_metrics['precision']:.4f}, "
+                      f"recall={cls_metrics['recall']:.4f}, f1={cls_metrics['f1']:.4f}")
+
+        # Robustness: Gaussian noise
+        print(f"  Robustness (Gaussian noise):")
+        rob_g = evaluate_robustness(model, X_test, y_test, algo, "gaussian")
+        for level, acc in rob_g.items():
+            print(f"    level {level:.2f}: {acc:.4f}")
+
+        # Robustness: Salt-and-Pepper noise
+        print(f"  Robustness (Salt-Pepper noise):")
+        rob_sp = evaluate_robustness(model, X_test, y_test, algo, "salt_pepper")
+        for level, acc in rob_sp.items():
+            print(f"    level {level:.2f}: {acc:.4f}")
+
+        all_robustness[algo] = rob_g
+        all_robustness_sp[algo] = rob_sp
 
         # Confusion matrix
         plot_confusion_matrix(
             np.array(metrics["confusion_matrix"]), class_names, algo
         )
-        print(f"  Confusion matrix saved: {FIG_DIR}/cm_{algo}.png")
+        print(f"  Confusion matrix: {FIG_DIR}/cm_{algo}.png")
 
-    return all_results, all_robustness, train_accs, test_accs, histories
+    return (all_results, all_robustness, all_robustness_sp,
+            train_accs, test_accs, train_times, histories)
 
 
-def run_evaluation_plots(all_results, all_robustness, train_accs, test_accs, histories):
-    """Generate comparison plots."""
+def run_evaluation_plots(all_results, all_robustness, all_robustness_sp,
+                         train_accs, test_accs, train_times, histories):
+    """Generate all comparison plots."""
     print("\n" + "=" * 60)
     print("  STEP 4: GENERATING COMPARISON PLOTS")
     print("=" * 60)
 
-    plot_metrics_comparison(all_results)
-    print(f"  Metrics comparison saved: {FIG_DIR}/metrics_comparison.png")
+    plot_metrics_comparison(all_results, train_times)
+    print(f"  Metrics: {FIG_DIR}/metrics_comparison.png")
 
-    plot_robustness_curves(all_robustness)
-    print(f"  Robustness curves saved: {FIG_DIR}/robustness_curves.png")
+    # Dual robustness curves (Gaussian + Salt-Pepper)
+    robustness_combined = {"gaussian": all_robustness, "salt_pepper": all_robustness_sp}
+    plot_robustness_curves(robustness_combined)
+    print(f"  Robustness: {FIG_DIR}/robustness_curves.png")
 
     plot_loss_curves(histories)
-    print(f"  Loss curves saved: {FIG_DIR}/loss_curves.png")
+    print(f"  Loss curves: {FIG_DIR}/loss_curves.png")
 
     plot_overfitting_analysis(train_accs, test_accs)
-    print(f"  Overfitting analysis saved: {FIG_DIR}/overfitting_analysis.png")
+    print(f"  Overfitting: {FIG_DIR}/overfitting_analysis.png")
 
-    save_all_results(all_results, all_robustness, train_accs, test_accs, histories)
+    plot_per_class_metrics(all_results)
+    print(f"  Per-class F1: {FIG_DIR}/per_class_f1.png")
+
+    save_all_results(all_results, {"gaussian": all_robustness, "salt_pepper": all_robustness_sp},
+                     train_accs, test_accs, train_times)
 
 
 def main():
@@ -131,18 +159,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python run.py --algorithm svm
-  python run.py --algorithm all
-  python run.py --algorithm svm,xgboost
-  python run.py --pca
-  python run.py --all
-  python run.py --analysis-only
-  python run.py --preprocess-only
+  python run.py --algorithm svm           # Train SVM only
+  python run.py --algorithm all           # Train all 4 algorithms
+  python run.py --algorithm svm,xgboost   # Train specific algorithms
+  python run.py --all                     # Full pipeline: analysis + preprocessing + training
+  python run.py --analysis-only           # Data analysis and visualizations only
+  python run.py --preprocess-only         # Data preprocessing only
+  python run.py --algorithm all --pca     # Enable PCA dimensionality reduction
         """,
     )
     parser.add_argument(
         "--algorithm", type=str, default="all",
-        help=f"Algorithm(s) to use, comma-separated. Available: {get_available_models()}, all (default: all)"
+        help=f"Algorithm(s), comma-separated. Available: {get_available_models()}, all (default: all)"
     )
     parser.add_argument(
         "--pca", action="store_true",
@@ -192,21 +220,26 @@ Examples:
 
     # Training & evaluation
     results = run_training(X_train, y_train, X_val, y_val, X_test, y_test, algorithms)
-    all_results, all_robustness, train_accs, test_accs, histories = results
+    (all_results, all_robustness, all_robustness_sp,
+     train_accs, test_accs, train_times, histories) = results
 
     # Comparison plots
-    run_evaluation_plots(all_results, all_robustness, train_accs, test_accs, histories)
+    run_evaluation_plots(all_results, all_robustness, all_robustness_sp,
+                         train_accs, test_accs, train_times, histories)
 
     # Print final summary table
     print("\n" + "=" * 60)
     print("  FINAL SUMMARY")
     print("=" * 60)
-    print(f"{'Algorithm':<12} {'Accuracy':>10} {'F1 Macro':>10} {'F1 Wtd':>10} {'Time(ms)':>10} {'Train Acc':>10}")
-    print("-" * 62)
+    header = (f"{'Algorithm':<12} {'Accuracy':>9} {'F1(Macro)':>10} {'F1(Wtd)':>9} "
+              f"{'Inf(ms)':>9} {'Train(s)':>9} {'TrainAcc':>9}")
+    print(header)
+    print("-" * len(header))
     for algo in algorithms:
         m = all_results[algo]
-        print(f"{algo.upper():<12} {m['accuracy']:>10.4f} {m['f1_macro']:>10.4f} "
-              f"{m['f1_weighted']:>10.4f} {m['inference_time_ms']:>10.4f} {train_accs[algo]:>10.4f}")
+        print(f"{algo.upper():<12} {m['accuracy']:>9.4f} {m['f1_macro']:>10.4f} "
+              f"{m['f1_weighted']:>9.4f} {m['inference_time_ms']:>9.4f} "
+              f"{train_times[algo]:>9.2f} {train_accs[algo]:>9.4f}")
 
     print("\nDone. All figures saved to output/figures/, results to output/results/")
 
