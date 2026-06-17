@@ -355,11 +355,13 @@ Loss 曲线对比图见 `output/figures/loss_curves.png`。
 
 ## 6. 系统展示（评分占比 30%）
 
-本节展示完整的工程架构、命令行调用方式及 GitHub 展示。
+本节展示完整的工程架构、命令行调用方式及 GitHub 展示。项目代码已开源，教师可通过以下链接在线查看：
+
+> **GitHub 仓库：** [https://github.com/joyboy-type/machine-learning-final](https://github.com/joyboy-type/machine-learning-final)
 
 ### 6.1 工程模块架构
 
-项目采用模块化设计，严格遵循单一职责原则：
+项目采用模块化设计，严格遵循单一职责原则。每个 `.py` 文件仅负责一个明确的功能领域，通过 `run.py` 作为统一入口调度所有模块。
 
 ```
 机器学习期末大作业/
@@ -369,50 +371,48 @@ Loss 曲线对比图见 `output/figures/loss_curves.png`。
 +-- preprocess.py      # 数据预处理：5步清洗流水线 + 标准化 + 可选PCA
 +-- train.py           # 模型注册中心：装饰器模式，4种算法的统一训练接口
 +-- evaluate.py        # 全维度评估：精度/F1/混淆矩阵/鲁棒性/过拟合/推理速度
-+-- utils.py           # 工具函数：高斯噪声生成、推理计时、结果格式化
++-- utils.py           # 工具函数：高斯/椒盐噪声生成、推理计时
 +-- run.py             # CLI入口：argparse命令行解析，一键式pipeline调度
-+-- DryBeanDataset/    # 原始数据目录
-|   +-- Dry_Bean_Dataset_Dirty_train.csv
-|   +-- Dry_Bean_Dataset_Dirty_test.csv
-|   +-- Dry_Bean_Dataset_Dirty_val.csv
++-- DryBeanDataset/    # 原始数据目录（3个CSV）
 +-- output/
-    +-- figures/       # 13张评估图表
+    +-- figures/       # 14张评估图表
     +-- results/       # JSON格式完整实验结果
 ```
 
-### 6.2 设计原则
+**设计原则：**
 
 - **单一职责：** 每个 `.py` 文件仅负责一个明确的功能领域
 - **开闭原则：** `train.py` 的 `@register` 装饰器机制使得添加新算法只需编写一个工厂函数，无需修改 `run.py` 或 `evaluate.py`
 - **Pipeline 自动化：** `run.py --all` 一键运行从数据分析到评估图表的完整流程
-- **命令行驱动：** 无 GUI，所有操作通过命令行参数控制
+- **命令行驱动：** 无 GUI，所有操作通过命令行参数控制，符合课程要求
 
-### 6.3 命令行接口
+### 6.2 命令行接口
+
+系统通过 `run.py` 提供统一的命令行入口，支持灵活的参数组合。下图展示了命令行帮助界面：
+
+![CLI Help](output/figures/screenshot_cli_help.png)
+
+**支持的命令：**
 
 ```bash
-# 一键运行完整流程（数据分析 + 预处理 + 4算法训练 + 全维度评估）
-python run.py --all
-
-# 运行数据分析与可视化（仅 4 张分析图）
-python run.py --analysis-only
-
-# 仅执行数据预处理
-python run.py --preprocess-only
-
-# 指定单个或多个算法
-python run.py --algorithm svm
-python run.py --algorithm svm,xgboost,mlp
-
-# 启用 PCA 降维（95% 方差保留）
-python run.py --algorithm all --pca
-
-# 查看帮助
-python run.py --help
+python run.py --all                   # 一键完整流程
+python run.py --analysis-only          # 仅数据分析
+python run.py --preprocess-only        # 仅预处理
+python run.py --algorithm svm          # 单算法训练
+python run.py --algorithm svm,xgboost  # 多算法训练
+python run.py --algorithm all --pca    # PCA降维模式
+python run.py --help                   # 查看帮助
 ```
 
-### 6.4 模型注册与扩展机制
+下图展示了运行 `python run.py --algorithm all` 的完整输出，包含数据加载、预处理报告、四种算法逐个训练与评估、以及最终汇总表：
 
-`train.py` 使用装饰器模式实现算法注册，添加新算法仅需：
+![CLI Run](output/figures/screenshot_cli_run.png)
+
+从运行输出可以清晰看到：数据从 13,611 行清洗至 12,284 行；四种算法依次训练（SVM 0.79s, RF 0.52s, XGBoost 1.62s, MLP 0.66s）；最后打印精度汇总表。整个流程无需任何人工交互，完全自动化。
+
+### 6.3 模型注册与扩展机制
+
+`train.py` 使用装饰器模式实现算法注册。添加新算法仅需编写一个工厂函数并用 `@register` 装饰：
 
 ```python
 @register("catboost")
@@ -420,17 +420,44 @@ def build_catboost():
     return CatBoostClassifier(iterations=200, depth=6), True
 ```
 
-系统会自动将新算法纳入 `--algorithm all` 的运行列表，无需修改任何其他模块。
+系统会自动将新算法纳入 `--algorithm all` 的运行列表，无需修改 `run.py` 或 `evaluate.py` 的任何代码。这一设计体现了开闭原则（对扩展开放，对修改关闭）。
 
-### 6.5 GitHub 展示
+### 6.4 GitHub 展示
 
-项目已按工程标准上传至 GitHub，包含以下内容：
+项目已按工程标准上传至 GitHub，仓库地址：[https://github.com/joyboy-type/machine-learning-final](https://github.com/joyboy-type/machine-learning-final)。
 
-- **README.md：** 项目简介、快速开始指南、结果表格、项目结构图、添加新模型说明
-- **requirements.txt：** 完整的 Python 依赖清单
-- **.gitignore：** 忽略数据集文件、生成输出、Python 缓存
-- **模块化源码：** 8 个独立 Python 模块，结构清晰
-- **论文报告（MD + PDF）：** 完整的项目分析与实验报告
+![GitHub Repo](output/figures/screenshot_github.png)
+
+**仓库包含内容：**
+
+| 内容 | 文件 | 说明 |
+|------|------|------|
+| 项目说明 | `README.md` | 数据描述、污染详情（4类）、处理流程（5步）、算法列表、完整精度表、快速开始指南 |
+| 依赖清单 | `requirements.txt` | numpy, pandas, scikit-learn, matplotlib, seaborn, xgboost |
+| 忽略规则 | `.gitignore` | 排除数据集文件、生成输出、Python 缓存、IDE 配置 |
+| 模块源码 | 8 个 `.py` 文件 | 完整模块化代码，每文件单一职责 |
+| 论文报告 | `.md` + `.pdf` + `.docx` | 三种格式的完整项目论文 |
+
+**README 展示的数据描述内容包括：**
+
+- 数据集基本信息（16 特征、7 类别、13,611 样本）
+- 数据污染详情（Leet-speak、大小写、空格、缺失值 "?" 和 NaN、"cm" 后缀、重复行）
+- 类别分布表（含不均衡提示）
+- 数据处理 5 步流水线
+- 4 种算法及其超参数
+- 完整测试精度表（Accuracy、F1 Macro、F1 Weighted、Precision、Recall）
+- 过拟合分析表、推理速度表、双噪声鲁棒性表
+
+### 6.5 实验结果汇总
+
+所有算法的测试集精度汇总如下（更详细的结果见第五章和第 5.7 节每类别分析）：
+
+| Algorithm | Accuracy | F1 (Macro) | F1 (Weighted) | Inference (ms) | Training (s) |
+|-----------|:--------:|:----------:|:-------------:|:--------------:|:------------:|
+| SVM (RBF) | **0.9342** | **0.9423** | **0.9343** | 0.0480 | 0.79 |
+| XGBoost | 0.9285 | 0.9387 | 0.9286 | 0.0028 | 1.62 |
+| MLP | 0.9241 | 0.9329 | 0.9243 | 0.0006 | 0.66 |
+| Random Forest | 0.9233 | 0.9327 | 0.9234 | 0.0104 | 0.52 |
 
 ## 7. 综合讨论
 
