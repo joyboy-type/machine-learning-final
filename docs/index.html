@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dry Bean Classification — ML Pipeline</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f6f8fa; --text: #24292f; --text2: #57606a;
+    --border: #d0d7de; --accent: #0969da; --accent2: #0550ae;
+    --success: #1a7f37; --warning: #bf8700; --code-bg: #f6f8fa;
+    --max-w: 960px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d1117; --bg2: #161b22; --text: #c9d1d9; --text2: #8b949e;
+      --border: #30363d; --accent: #58a6ff; --accent2: #79c0ff;
+      --success: #3fb950; --warning: #d29922; --code-bg: #161b22; }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji"; background: var(--bg); color: var(--text); line-height:1.6; }
+  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 2rem 1rem; text-align: center; }
+  header h1 { font-size: 1.8rem; margin-bottom: .5rem; }
+  header p { color: var(--text2); font-size: .95rem; max-width: 700px; margin: 0 auto; }
+  .badge-row { margin-top: .8rem; display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+  .badge { display: inline-block; padding: .2rem .6rem; font-size: .75rem; border-radius: 2rem; background: var(--bg2); border: 1px solid var(--border); color: var(--text2); }
+  .badge.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { max-width: var(--max-w); margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+  section { margin-bottom: 2.5rem; }
+  h2 { font-size: 1.35rem; padding-bottom: .35rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+  h3 { font-size: 1.1rem; margin: 1.2rem 0 .5rem; }
+  p, li { margin-bottom: .5rem; color: var(--text); font-size: .92rem; }
+  ul, ol { padding-left: 1.5rem; margin-bottom: .8rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .88rem; }
+  th, td { border: 1px solid var(--border); padding: .5rem .7rem; text-align: center; }
+  th { background: var(--bg2); font-weight: 600; }
+  td.left { text-align: left; }
+  tr:nth-child(even) { background: var(--bg2); }
+  .highlight { color: var(--accent); font-weight: 600; }
+  .muted { color: var(--text2); font-size: .82rem; }
+  code { background: var(--code-bg); padding: .15em .35em; border-radius: 3px; font-size: .85em; border: 1px solid var(--border); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; margin: .8rem 0; font-size: .82rem; line-height: 1.45; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .card { border: 1px solid var(--border); border-radius: 6px; padding: 1rem; background: var(--bg); }
+  .card h4 { font-size: .95rem; margin-bottom: .4rem; }
+  .card p { font-size: .84rem; color: var(--text2); margin-bottom: 0; }
+  .tag { display: inline-block; padding: .1rem .45rem; font-size: .72rem; border-radius: 3px; margin-right: .25rem; }
+  .tag-green { background: #dafbe1; color: #1a7f37; border: 1px solid #aceebb; }
+  .tag-blue { background: #ddf4ff; color: #0969da; border: 1px solid #b6e3ff; }
+  .tag-orange { background: #fff3cd; color: #bf8700; border: 1px solid #ffdf8c; }
+  footer { text-align: center; padding: 1.5rem; color: var(--text2); font-size: .8rem; border-top: 1px solid var(--border); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .arch-tree { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; font-family: "SF Mono",Menlo,monospace; font-size: .78rem; line-height: 1.6; overflow-x: auto; white-space: pre; }
+  .stat-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin: 1rem 0; }
+  .stat { text-align: center; padding: .8rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); }
+  .stat .num { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+  .stat .label { font-size: .75rem; color: var(--text2); }
+  @media (max-width: 600px) { .stat-box { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dry Bean Classification</h1>
+  <p>Full-stack machine learning pipeline for classifying 7 varieties of dry beans using geometric shape features. From dirty data to deployable models — all in one CLI command.</p>
+  <div class="badge-row">
+    <span class="badge accent">Python 3.9</span>
+    <span class="badge">scikit-learn</span>
+    <span class="badge">XGBoost 2.1.4</span>
+    <span class="badge">pandas + numpy</span>
+    <span class="badge">matplotlib + seaborn</span>
+    <span class="badge">MIT License</span>
+  </div>
+</header>
+
+<main>
+
+<!-- ====== QUICK STATS ====== -->
+<section>
+  <div class="stat-box">
+    <div class="stat"><div class="num">13,611</div><div class="label">Total Samples</div></div>
+    <div class="stat"><div class="num">16</div><div class="label">Features</div></div>
+    <div class="stat"><div class="num">7</div><div class="label">Bean Classes</div></div>
+    <div class="stat"><div class="num">93.42%</div><div class="label">Best Accuracy (SVM)</div></div>
+  </div>
+</section>
+
+<!-- ====== DATASET DESCRIPTION ====== -->
+<section>
+  <h2>1. Dataset Description</h2>
+  <p>The <strong>Dry Bean Dataset</strong> contains geometric shape features extracted from images of 13,611 dry bean grains. Each sample is described by 16 numeric features derived from computer vision, and the goal is to classify each grain into one of 7 varieties.</p>
+
+  <h3>Feature List</h3>
+  <table>
+    <thead><tr><th>Feature</th><th>Description</th><th>Feature</th><th>Description</th></tr></thead>
+    <tbody>
+    <tr><td>Area</td><td class="left">Bean area (pixels)</td><td>EquivDiameter</td><td class="left">Equivalent diameter</td></tr>
+    <tr><td>Perimeter</td><td class="left">Bean perimeter</td><td>Extent</td><td class="left">Bounding box area ratio</td></tr>
+    <tr><td>MajorAxisLength</td><td class="left">Ellipse major axis</td><td>Solidity</td><td class="left">Convex hull area ratio</td></tr>
+    <tr><td>MinorAxisLength</td><td class="left">Ellipse minor axis</td><td>roundness</td><td class="left">Roundness metric</td></tr>
+    <tr><td>AspectRation</td><td class="left">Major/Minor ratio</td><td>Compactness</td><td class="left">Compactness metric</td></tr>
+    <tr><td>Eccentricity</td><td class="left">Ellipse eccentricity</td><td>ShapeFactor1</td><td class="left">Shape descriptor 1</td></tr>
+    <tr><td>ConvexArea</td><td class="left">Convex hull area</td><td>ShapeFactor2</td><td class="left">Shape descriptor 2</td></tr>
+    <tr><td></td><td></td><td>ShapeFactor3</td><td class="left">Shape descriptor 3</td></tr>
+    <tr><td></td><td></td><td>ShapeFactor4</td><td class="left">Shape descriptor 4</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Class Distribution</h3>
+  <table>
+    <thead><tr><th>Class</th><th>Samples</th><th>Percentage</th><th>Bar</th></tr></thead>
+    <tbody>
+    <tr><td>DERMASON</td><td>3,546</td><td>26.1%</td><td class="left"><progress value="26.1" max="30" style="width:100%"></progress></td></tr>
+    <tr><td>SIRA</td><td>2,636</td><td>19.4%</td><td class="left"><progress value="19.4" max="30" style="width:100%"></progress></td></tr>
+    <tr><td>SEKER</td><td>2,027</td><td>14.9%</td><td class="left"><progress value="14.9" max="30" style="width:100%"></progress></td></tr>
+    <tr><td>HOROZ</td><td>1,928</td><td>14.2%</td><td class="left"><progress value="14.2" max="30" style="width:100%"></progress></td></tr>
+    <tr><td>CALI</td><td>1,630</td><td>12.0%</td><td class="left"><progress value="12.0" max="30" style="width:100%"></progress></td></tr>
+    <tr><td>BARBUNYA</td><td>1,322</td><td>9.7%</td><td class="left"><progress value="9.7" max="30" style="width:100%"></progress></td></tr>
+    <tr><td style="color:#bf8700"><strong>BOMBAY</strong></td><td style="color:#bf8700">522</td><td style="color:#bf8700">3.8%</td><td class="left"><progress value="3.8" max="30" style="width:100%"></progress></td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Imbalanced dataset — BOMBAY is under-represented (3.8%). Evaluation uses both <strong>macro</strong> and <strong>weighted</strong> averaging to account for this.</p>
+
+  <h3>Data Contamination (Simulated)</h3>
+  <p>The dataset was intentionally "polluted" to simulate real-world data quality issues. Our pipeline automatically detects and fixes all of these:</p>
+  <table>
+    <thead><tr><th>#</th><th>Contamination Type</th><th>Example</th><th>Affected</th><th>Severity</th></tr></thead>
+    <tbody>
+    <tr><td>1</td><td class="left"><strong>Leet-speak labels</strong></td><td class="left">D3RMAS0N, H0R0Z, S3K3R, B0MBAY</td><td>171 labels</td><td><span class="tag tag-orange">High</span></td></tr>
+    <tr><td>2</td><td class="left"><strong>Case variants</strong></td><td class="left">"dermason", "HOROZ", "cali"</td><td>~200 labels</td><td><span class="tag tag-blue">Medium</span></td></tr>
+    <tr><td>3</td><td class="left"><strong>Trailing whitespace</strong></td><td class="left">"BARBUNYA ", "SIRA "</td><td>~200 labels</td><td><span class="tag tag-blue">Medium</span></td></tr>
+    <tr><td>4</td><td class="left"><strong>Missing values (NaN)</strong></td><td class="left">NaN in Perimeter &amp; Solidity</td><td>1,065 cells</td><td><span class="tag tag-orange">High</span></td></tr>
+    <tr><td>5</td><td class="left"><strong>"?" placeholder</strong></td><td class="left">Solidity column = "?"</td><td>270 cells</td><td><span class="tag tag-orange">High</span></td></tr>
+    <tr><td>6</td><td class="left"><strong>"cm" suffix</strong></td><td class="left">Compactness = "0.8194 cm"</td><td>388 cells</td><td><span class="tag tag-blue">Medium</span></td></tr>
+    <tr><td>7</td><td class="left"><strong>Duplicate rows</strong></td><td class="left">Exact copies across all features</td><td>49 rows</td><td><span class="tag tag-green">Low</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ====== DATA PROCESSING ====== -->
+<section>
+  <h2>2. Data Processing Pipeline</h2>
+  <p>Our preprocessing pipeline cleans the data in <strong>5 sequential steps</strong>, transforming "dirty" raw data (25 unique labels, mixed types, outliers) into clean, standardized numeric arrays ready for model training.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4><span class="tag tag-orange">Step 1</span> Label Standardization</h4>
+      <p>Leet-speak mapping (D3RMAS0N→DERMASON), case unification (upper), whitespace stripping. <strong>25 raw labels → 7 clean classes.</strong> Corrects 171 leet-speak + ~400 case/space variants.</p>
+    </div>
+    <div class="card">
+      <h4><span class="tag tag-orange">Step 2</span> Feature Type Repair</h4>
+      <p>Solidity: "?"→NaN→float64. Compactness: strip " cm" suffix→float64. All 16 features enforced to numeric types.</p>
+    </div>
+    <div class="card">
+      <h4><span class="tag tag-blue">Step 3</span> Missing Value Removal</h4>
+      <p>Drop rows with any NaN. The missing rate is low (~5% in Perimeter, ~2.8% in Solidity), so deletion is safe and avoids interpolation bias.</p>
+    </div>
+    <div class="card">
+      <h4><span class="tag tag-blue">Step 4</span> Deduplication</h4>
+      <p>Remove 49 exact duplicate rows. Small impact but important for unbiased evaluation.</p>
+    </div>
+    <div class="card">
+      <h4><span class="tag tag-green">Step 5</span> Outlier Clipping</h4>
+      <p>3×IQR clipping per feature: values beyond [Q1-3×IQR, Q3+3×IQR] are clipped to boundaries. Preserves samples while suppressing extreme values. Also fixes physically impossible negative Area values.</p>
+    </div>
+    <div class="card">
+      <h4><span class="tag tag-green">Feature Eng.</span> Z-score Standardization</h4>
+      <p>StandardScaler: all features to μ=0, σ=1. Essential for SVM (RBF) and MLP. Chosen over Min-Max for better outlier tolerance. Optional PCA via <code>--pca</code> flag (95% variance).</p>
+    </div>
+  </div>
+
+  <h3>Cleaning Statistics</h3>
+  <table>
+    <thead><tr><th>Dataset</th><th>Raw Rows</th><th>After Cleaning</th><th>Removed</th><th>Retention</th></tr></thead>
+    <tbody>
+    <tr><td>Training</td><td>9,527</td><td>8,581</td><td>946</td><td>90.07%</td></tr>
+    <tr><td>Test</td><td>2,737</td><td>2,477</td><td>260</td><td>90.50%</td></tr>
+    <tr><td>Validation</td><td>1,347</td><td>1,226</td><td>121</td><td>91.01%</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>13,611</strong></td><td><strong>12,284</strong></td><td><strong>1,327</strong></td><td><strong>90.25%</strong></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ====== ALGORITHMS ====== -->
+<section>
+  <h2>3. Algorithms Implemented</h2>
+  <p>Four classification algorithms are implemented and systematically compared. <strong>XGBoost</strong> is the "beyond-classroom" algorithm — studied independently from the original paper (Chen &amp; Guestrin, 2016) and official documentation.</p>
+
+  <table>
+    <thead><tr><th>#</th><th>Algorithm</th><th>Type</th><th>In Class?</th><th>Key Hyperparameters</th><th>Iterative?</th></tr></thead>
+    <tbody>
+    <tr>
+      <td>1</td><td class="left"><strong>SVM (RBF Kernel)</strong></td><td class="left">Support Vector Machine</td><td><span class="tag tag-green">Yes</span></td>
+      <td class="left">C=10, kernel=rbf, gamma=scale</td><td>No</td>
+    </tr>
+    <tr>
+      <td>2</td><td class="left"><strong>Random Forest</strong></td><td class="left">Ensemble (Bagging)</td><td><span class="tag tag-green">Yes</span></td>
+      <td class="left">n=200, depth=15, min_split=5</td><td>No</td>
+    </tr>
+    <tr style="background: #ddf4ff22">
+      <td>3</td><td class="left"><strong>XGBoost</strong></td><td class="left">Gradient Boosting (Boosting)</td><td><span class="tag tag-orange">No (self-taught)</span></td>
+      <td class="left">n=200, lr=0.1, depth=6, subsample=0.8</td><td>Yes</td>
+    </tr>
+    <tr>
+      <td>4</td><td class="left"><strong>MLP</strong></td><td class="left">Multi-Layer Perceptron</td><td><span class="tag tag-blue">Partially</span></td>
+      <td class="left">layers=(256,128,64), ReLU, Adam, early_stopping</td><td>Yes</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h3>XGBoost — Beyond-Classroom Algorithm</h3>
+  <p>XGBoost (eXtreme Gradient Boosting) was proposed by Tianqi Chen in 2016 and has since become the dominant algorithm in Kaggle competitions and industrial ML systems. Key innovations over traditional GBDT include:</p>
+  <ul>
+    <li><strong>Second-order Taylor approximation</strong> of the objective function for more accurate gradient estimation</li>
+    <li><strong>Built-in regularization</strong> (L1 + L2) to control model complexity and prevent overfitting</li>
+    <li><strong>Column subsampling</strong> at both tree and split levels for improved generalization</li>
+    <li><strong>Parallelized feature computation</strong> using sorted block structure</li>
+    <li><strong>Automatic handling of missing values</strong> via learned default split directions</li>
+  </ul>
+
+  <h3>Model Registry System</h3>
+  <p>Adding a new algorithm requires only a decorated factory function — <strong>no changes to any other module</strong>:</p>
+  <pre>@register("catboost")
+def build_catboost():
+    return CatBoostClassifier(iterations=200, depth=6, verbose=False), True</pre>
+</section>
+
+<!-- ====== ACCURACY RESULTS ====== -->
+<section>
+  <h2>4. Accuracy Results — All Algorithms</h2>
+
+  <h3>4.1 Test Set Accuracy (Primary Metrics)</h3>
+  <table>
+    <thead><tr><th>Algorithm</th><th>Accuracy</th><th>Precision (Macro)</th><th>Recall (Macro)</th><th>F1 (Macro)</th><th>F1 (Weighted)</th></tr></thead>
+    <tbody>
+    <tr style="background: #dafbe122">
+      <td class="left"><strong>SVM (RBF)</strong></td><td><strong class="highlight">0.9342</strong></td><td><strong class="highlight">0.9447</strong></td><td><strong class="highlight">0.9401</strong></td><td><strong class="highlight">0.9423</strong></td><td><strong class="highlight">0.9343</strong></td>
+    </tr>
+    <tr><td class="left">XGBoost</td><td>0.9285</td><td>0.9400</td><td>0.9375</td><td>0.9387</td><td>0.9286</td></tr>
+    <tr><td class="left">MLP</td><td>0.9241</td><td>0.9355</td><td>0.9311</td><td>0.9329</td><td>0.9243</td></tr>
+    <tr><td class="left">Random Forest</td><td>0.9233</td><td>0.9342</td><td>0.9314</td><td>0.9327</td><td>0.9234</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">SVM (RBF) achieves the best results across all 6 metrics. Macro F1 consistently exceeds Weighted F1, indicating strong performance on minority classes (BOMBAY, BARBUNYA).</p>
+
+  <h3>4.2 Overfitting Analysis</h3>
+  <table>
+    <thead><tr><th>Algorithm</th><th>Train Accuracy</th><th>Test Accuracy</th><th>Gap</th><th>Interpretation</th></tr></thead>
+    <tbody>
+    <tr><td class="left">MLP</td><td>0.9256</td><td>0.9241</td><td><span class="tag tag-green">0.0015</span></td><td class="left">Virtually no overfitting (early_stopping)</td></tr>
+    <tr><td class="left">SVM</td><td>0.9378</td><td>0.9342</td><td><span class="tag tag-green">0.0036</span></td><td class="left">Minimal overfitting (structural risk minimization)</td></tr>
+    <tr><td class="left">Random Forest</td><td>0.9913</td><td>0.9233</td><td><span class="tag tag-orange">0.0680</span></td><td class="left">Moderate overfitting — tree depth=15 too expressive</td></tr>
+    <tr><td class="left">XGBoost</td><td><span style="color:#bf8700">0.9999</span></td><td>0.9285</td><td><span class="tag tag-orange">0.0714</span></td><td class="left">Most overfitting — near-perfect train fit, 7% drop on test</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.3 Per-Class F1 Breakdown</h3>
+  <table>
+    <thead><tr><th>Class</th><th>SVM</th><th>XGBoost</th><th>MLP</th><th>Random Forest</th><th>Best</th></tr></thead>
+    <tbody>
+    <tr><td class="left">BARBUNYA</td><td class="highlight">0.9376</td><td>0.9287</td><td>0.9155</td><td>0.9146</td><td>SVM</td></tr>
+    <tr><td class="left">BOMBAY</td><td>0.9901</td><td><strong>1.0000</strong></td><td>0.9901</td><td><strong>1.0000</strong></td><td>XGB / RF</td></tr>
+    <tr><td class="left">CALI</td><td class="highlight">0.9365</td><td>0.9340</td><td>0.9270</td><td>0.9181</td><td>SVM</td></tr>
+    <tr><td class="left">DERMASON</td><td class="highlight">0.9278</td><td>0.9188</td><td>0.9190</td><td>0.9187</td><td>SVM</td></tr>
+    <tr><td class="left">HOROZ</td><td>0.9564</td><td class="highlight">0.9591</td><td>0.9590</td><td>0.9563</td><td>XGBoost</td></tr>
+    <tr><td class="left">SEKER</td><td class="highlight">0.9541</td><td>0.9444</td><td>0.9415</td><td>0.9391</td><td>SVM</td></tr>
+    <tr><td class="left">SIRA</td><td class="highlight">0.8939</td><td>0.8858</td><td>0.8786</td><td>0.8822</td><td>SVM</td></tr>
+    </tbody>
+  </table>
+  <p class="muted"><strong>BOMBAY is near-perfect</strong> (F1 ≥ 0.99) despite having only 3.8% of samples — its geometric features have clear decision boundaries. <strong>SIRA is the hardest class</strong> (F1 ~0.88) due to high overlap with DERMASON in shape space. SVM dominates 5 of 7 classes.</p>
+
+  <h3>4.4 Inference Speed</h3>
+  <table>
+    <thead><tr><th>Algorithm</th><th>Inference (ms/sample)</th><th>Relative Speed</th><th>Training Time</th><th>Best For</th></tr></thead>
+    <tbody>
+    <tr><td class="left"><strong>MLP</strong></td><td><strong class="highlight">0.0006</strong></td><td>1× (fastest)</td><td>0.66s</td><td class="left">Real-time, edge devices</td></tr>
+    <tr><td class="left">XGBoost</td><td>0.0028</td><td>5×</td><td>1.62s</td><td class="left">Batch prediction, API serving</td></tr>
+    <tr><td class="left">Random Forest</td><td>0.0104</td><td>17×</td><td>0.52s</td><td class="left">Interpretable scenarios</td></tr>
+    <tr><td class="left">SVM (RBF)</td><td>0.0480</td><td>80× (slowest)</td><td>0.79s</td><td class="left">Offline high-accuracy analysis</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.5 Robustness — Dual Noise Evaluation</h3>
+  <p>Two noise types at four intensity levels are applied to test features, revealing dramatically different robustness profiles:</p>
+  <table>
+    <thead><tr><th colspan="5" style="background:var(--bg2)">Gaussian Noise — Accuracy at Each Level</th></tr>
+    <tr><th>Noise Level</th><th>SVM</th><th>XGBoost</th><th>MLP</th><th>Random Forest</th></tr></thead>
+    <tbody>
+    <tr><td>0.00 (clean)</td><td>0.9342</td><td>0.9285</td><td>0.9241</td><td>0.9233</td></tr>
+    <tr><td>0.01</td><td>0.9342</td><td class="highlight">0.9298</td><td>0.9237</td><td>0.9217</td></tr>
+    <tr><td>0.05</td><td class="highlight">0.9354</td><td>0.9294</td><td>0.9233</td><td>0.9269</td></tr>
+    <tr><td>0.10</td><td class="highlight">0.9314</td><td>0.9233</td><td>0.9197</td><td>0.9229</td></tr>
+    </tbody>
+  </table>
+  <p></p>
+  <table>
+    <thead><tr><th colspan="5" style="background:var(--bg2)">Salt-and-Pepper Noise — Accuracy at Each Level</th></tr>
+    <tr><th>Noise Level</th><th>SVM</th><th>XGBoost</th><th>MLP</th><th>Random Forest</th></tr></thead>
+    <tbody>
+    <tr><td>0.00 (clean)</td><td>0.9342</td><td>0.9285</td><td>0.9241</td><td>0.9233</td></tr>
+    <tr><td>0.01</td><td>0.9088</td><td>0.9245</td><td>0.9003</td><td class="highlight">0.9221</td></tr>
+    <tr><td>0.05</td><td>0.8010</td><td>0.9136</td><td>0.8070</td><td class="highlight">0.9144</td></tr>
+    <tr><td>0.10</td><td>0.6964</td><td>0.8995</td><td>0.7202</td><td class="highlight">0.9023</td></tr>
+    </tbody>
+  </table>
+  <p class="muted"><strong>Key insight:</strong> Salt-and-pepper noise is 40-50× more damaging than Gaussian noise. Random Forest is surprisingly the most robust to S&amp;P noise (retains 90.23% at level 0.10 vs SVM's 69.64%). This highlights why robustness evaluation <em>must</em> consider multiple noise types.</p>
+</section>
+
+<!-- ====== PROJECT ARCHITECTURE ====== -->
+<section>
+  <h2>5. Project Architecture</h2>
+  <div class="arch-tree">machine-learning-final/
++-- config.py            Global paths, constants, feature list
++-- data_loader.py       Unified data loading (raw / clean / processed)
++-- analysis.py          Data quality report + 4 EDA visualizations
++-- preprocess.py        5-step cleaning pipeline + StandardScaler + PCA
++-- train.py             Model registry (@register decorator) + training
++-- evaluate.py          5-dimension evaluation + 7 chart types
++-- utils.py             Gaussian &amp; S&amp;P noise generation, timing
++-- run.py               CLI entry point (argparse), one-click pipeline
++-- data/                Dataset directory (place CSV files here)
++-- output/              All generated results (auto-created)
+    +-- figures/         14 evaluation charts
+    +-- results/         JSON experiment data</div>
+
+  <h3>Quick Start</h3>
+  <pre># Install dependencies
+pip install -r requirements.txt
+
+# One-click full pipeline
+python run.py --all
+
+# Run specific algorithms
+python run.py --algorithm svm,xgboost
+
+# Data analysis only
+python run.py --analysis-only
+
+# With PCA dimensionality reduction
+python run.py --algorithm all --pca
+
+# Show all options
+python run.py --help</pre>
+</section>
+
+<!-- ====== EVALUATION DIMENSIONS SUMMARY ====== -->
+<section>
+  <h2>6. Evaluation Summary</h2>
+  <table>
+    <thead><tr><th>Dimension</th><th>Best Algorithm</th><th>Runner-up</th><th>Notes</th></tr></thead>
+    <tbody>
+    <tr><td class="left">Test Accuracy</td><td><strong>SVM — 93.42%</strong></td><td>XGBoost — 92.85%</td><td class="left">SVM leads by 0.57%</td></tr>
+    <tr><td class="left">Generalization</td><td><strong>MLP — gap 0.15%</strong></td><td>SVM — gap 0.36%</td><td class="left">Early stopping + adaptive LR</td></tr>
+    <tr><td class="left">Inference Speed</td><td><strong>MLP — 0.0006 ms</strong></td><td>XGBoost — 0.0028 ms</td><td class="left">MLP is 80× faster than SVM</td></tr>
+    <tr><td class="left">Gaussian Robustness</td><td><strong>SVM — drop 0.28%</strong></td><td>RF — drop 0.16%</td><td class="left">All models robust to Gaussian</td></tr>
+    <tr><td class="left">S&amp;P Robustness</td><td><strong>RF — drop 2.10%</strong></td><td>XGBoost — drop 2.90%</td><td class="left">Massive divergence from Gaussian</td></tr>
+    <tr><td class="left">Training Speed</td><td><strong>RF — 0.52s</strong></td><td>MLP — 0.66s</td><td class="left">All models train in &lt; 2 seconds</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Recommendation by Scenario</h3>
+  <table>
+    <thead><tr><th>Scenario</th><th>Recommended Algorithm</th><th>Reason</th></tr></thead>
+    <tbody>
+    <tr><td class="left">Maximum accuracy (quality control)</td><td class="left"><strong>SVM (RBF)</strong></td><td class="left">93.42% accuracy, best robustness, best generalization</td></tr>
+    <tr><td class="left">Real-time inference (production line)</td><td class="left"><strong>MLP</strong></td><td class="left">0.0006 ms/sample, 80× faster than SVM</td></tr>
+    <tr><td class="left">Balanced solution (recommended)</td><td class="left"><strong>XGBoost</strong></td><td class="left">Accuracy close to SVM, 17× faster inference</td></tr>
+    <tr><td class="left">Interpretability required</td><td class="left"><strong>Random Forest</strong></td><td class="left">Built-in feature importance, best S&amp;P robustness</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  <p><strong>2026 AIT209 Machine Learning &amp; Project Practice</strong> · Final Project</p>
+  <p>对外经济贸易大学 · 机器学习与项目实践 · 期末作业</p>
+  <p style="margin-top:.5rem"><a href="https://github.com/joyboy-type/machine-learning-final">View on GitHub</a> · <a href="../论文_DryBean机器学习项目报告.pdf">Download Paper (PDF)</a></p>
+</footer>
+
+</body>
+</html>
