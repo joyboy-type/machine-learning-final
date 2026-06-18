@@ -357,7 +357,9 @@ Loss 曲线对比图见 `output/figures/loss_curves.png`。
 
 本节展示完整的工程架构、命令行调用方式及 GitHub 展示。项目代码已开源，教师可通过以下链接在线查看：
 
-> **GitHub 仓库：** [https://github.com/joyboy-type/machine-learning-final](https://github.com/joyboy-type/machine-learning-final)
+> **GitHub 仓库（源码）：** [https://github.com/joyboy-type/machine-learning-final](https://github.com/joyboy-type/machine-learning-final)
+>
+> **GitHub Pages 展示页面（数据描述 + 处理流程 + 算法 + 精度表）：** [https://joyboy-type.github.io/machine-learning-final/](https://joyboy-type.github.io/machine-learning-final/)
 
 ### 6.1 工程模块架构
 
@@ -424,7 +426,7 @@ def build_catboost():
 
 ### 6.4 GitHub 展示
 
-项目已按工程标准上传至 GitHub，仓库地址：[https://github.com/joyboy-type/machine-learning-final](https://github.com/joyboy-type/machine-learning-final)。
+项目已按工程标准上传至 GitHub，仓库地址：[https://github.com/joyboy-type/machine-learning-final](https://github.com/joyboy-type/machine-learning-final)，展示页面地址：[https://joyboy-type.github.io/machine-learning-final/](https://joyboy-type.github.io/machine-learning-final/)。
 
 ![GitHub Repo](output/figures/screenshot_github.png)
 
@@ -586,9 +588,9 @@ def build_catboost():
 | 13 | 过拟合分析 | `output/figures/overfitting_analysis.png` |
 | 14 | 每类别 F1 对比 | `output/figures/per_class_f1.png` |
 
-### C. 项目代码链接
+### C. 项目链接
 
-- **GitHub 文件夹：** `GitHub/`（包含完整源码、README、requirements.txt、.gitignore）
-- **作业提交文件夹：** `作业提交/`（包含源码 + 数据集 + 所有生成结果）
+- **GitHub 仓库（源码）：** [https://github.com/joyboy-type/machine-learning-final](https://github.com/joyboy-type/machine-learning-final)
+- **GitHub Pages 展示页面：** [https://joyboy-type.github.io/machine-learning-final/](https://joyboy-type.github.io/machine-learning-final/)
 
 *本报告由 Joyboy 完成，作为 2026 AIT209 机器学习与项目实践课程的期末考核作业。*
